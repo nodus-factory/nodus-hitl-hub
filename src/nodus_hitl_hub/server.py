@@ -86,12 +86,12 @@ app = create_app()
 
 
 def main():
-    """Entry point for development server."""
-    import uvicorn
+    """Entry point for development and production."""
+    import os
 
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "3000"))
-    uvicorn.run("nodus_hitl_hub.server:app", host=host, port=port, reload=True)
+    app.run(transport="http", host=host, port=port)
 
 
 if __name__ == "__main__":
