@@ -16,4 +16,4 @@ RUN pip install --no-cache-dir . && pip install --no-cache-dir uvicorn
 EXPOSE 3000
 
 # Run server
-CMD ["python", "-c", "from nodus_hitl_hub.server import app; app.run(transport='http', host='0.0.0.0', port=3000)"]
+CMD ["fastmcp", "run", "src/nodus_hitl_hub/server.py:app", "--transport", "http", "--host", "0.0.0.0", "--port", "3000"]
