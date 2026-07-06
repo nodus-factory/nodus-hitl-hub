@@ -7,12 +7,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Copy source code and install
 COPY pyproject.toml .
-RUN pip install --no-cache-dir . && pip install --no-cache-dir uvicorn
-
-# Copy source code
 COPY src/ src/
+RUN pip install --no-cache-dir . && pip install --no-cache-dir uvicorn
 
 # Expose port
 EXPOSE 3000
