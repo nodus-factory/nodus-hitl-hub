@@ -24,9 +24,6 @@ def create_app():
     """Create and configure the FastMCP application."""
     from mcp.server.fastmcp import FastMCP
 
-    mcp = FastMCP("nodus-hitl-hub")
-
-    @mcp.lifespan
     async def lifespan(server):
         """Startup/shutdown lifecycle for database pool, plugin registries, and background tasks."""
         logger.info("Starting HITL Hub...")
@@ -59,8 +56,8 @@ def create_app():
         )
 
         # MCP tools and resources
-        register_tools(mcp, engine)
-        register_resources(mcp, engine)
+        register_tools(server, engine)
+        register_resources(server, engine)
 
         # Background tasks
         from nodus_hitl_hub.plugins.hooks.expiry import ExpiryHook
@@ -78,6 +75,8 @@ def create_app():
         expiry.stop()
         await close_pool()
         logger.info("HITL Hub stopped")
+
+    mcp = FastMCP("nodus-hitl-hub", lifespan=lifespan)
 
     return mcp
 
