@@ -140,7 +140,7 @@ class Repository:
                 UPDATE nostr_hitl
                 SET status = $2,
                     resolved_at = NOW(),
-                    payload = CASE WHEN $3 IS NOT NULL THEN $3::jsonb ELSE payload END
+                    payload = CASE WHEN $3::text IS NOT NULL THEN $3::jsonb ELSE payload END
                 WHERE event_id = $1
                 """,
                 event_id,
