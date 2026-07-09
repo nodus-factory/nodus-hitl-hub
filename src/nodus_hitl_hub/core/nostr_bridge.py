@@ -115,7 +115,7 @@ class NostrBridge:
         if not self._client:
             return None
 
-        from nostr_sdk import EventBuilder, Kind, Tag
+        from nostr_sdk import EventBuilder, Keys, Kind, NostrSigner, Tag
 
         tags = [
             Tag.parse(["p", owner_pubkey]),
@@ -125,7 +125,15 @@ class NostrBridge:
             Tag.parse(["hub", event.event_id]),
         ]
         builder = EventBuilder(Kind(10020), self._inbox_content(event)).tags(tags)
-        output = await self._client.send_event_builder(builder)
+        # kind:10020 is in the NIP-01 replaceable range: the relay keeps only
+        # the LATEST event per (author, kind). Signing every request with the
+        # hub key would make each publish replace the previous pending one, so
+        # each event gets its own ephemeral key. Llibreta filters by the #p
+        # owner tag (not author) and resolutions map back via the `request`
+        # tag → reference_id, so nothing downstream depends on the author.
+        ephemeral = Keys.generate()
+        signed = await builder.sign(NostrSigner.keys(ephemeral))
+        output = await self._client.send_event(signed)
         nostr_event_id = output.id.to_hex()
         logger.info(
             "Published kind:10020 hitl=%s nostr=%s owner=%s",
