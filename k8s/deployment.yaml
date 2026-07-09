@@ -23,16 +23,22 @@ spec:
               name: http
           env:
             - name: DATABASE_URL
+              value: "postgresql://nodus:nodus_password@postgres:5432/nodus_db"
+            - name: REDIS_URL
+              value: "redis://redis:6379/0"
+            - name: RELAY_URL
+              value: "ws://nostr-relay:7777"
+            - name: BACKOFFICE_URL
+              value: "http://backoffice:5001"
+            - name: MEMORIUM_URL
+              value: "http://memorium:8082"
+            # Signs kind:10020 inbox items published by the hub
+            - name: HITL_HUB_NSEC
               valueFrom:
                 secretKeyRef:
-                  name: llibreta-db
-                  key: url
-            - name: REDIS_URL
-              value: "redis://redis.nodus-dev:6379/0"
-            - name: RELAY_URL
-              value: "wss://nostr.mycompanion.es"
-            - name: BACKOFFICE_URL
-              value: "http://backoffice.nodus-dev:5001"
+                  name: nodus-secrets
+                  key: hitl-hub-nsec
+                  optional: true
           envFrom:
             - configMapRef:
                 name: hitl-hub-config

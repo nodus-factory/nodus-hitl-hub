@@ -23,14 +23,16 @@ class HITLEngine:
         validators: ValidatorRegistry,
         lifecycle: LifecycleManager,
         dispatcher: DispatcherRegistry,
+        nostr_bridge=None,
     ):
         self.repository = repository
         self.validators = validators
         self.lifecycle = lifecycle
         self.dispatcher = dispatcher
+        self.nostr_bridge = nostr_bridge
 
     async def request(self, req: HITLRequest) -> HITLResponse:
-        """Crea un nou HITL request: valida, persisteix, notifica."""
+        """Crea un nou HITL request: valida, dedupe, persisteix, publica, notifica."""
 
         # 1. Validate
         validator = self.validators.get_validator(req.action_type)
@@ -43,14 +45,51 @@ class HITLEngine:
                     error=f"Validation failed: {'; '.join(errors)}",
                 )
 
-        # 2. Persist
+        # 2. Idempotency: a retry with the same key returns the existing request
+        idempotency_key = req.metadata.get("idempotency_key")
+        if idempotency_key:
+            existing = await self.repository.get_by_idempotency_key(idempotency_key)
+            if existing is not None:
+                logger.info(
+                    "HITL request deduped: key=%s existing=%s status=%s",
+                    idempotency_key,
+                    existing.event_id,
+                    existing.status,
+                )
+                return HITLResponse(
+                    confirmation_id=existing.event_id,
+                    status=existing.status,
+                    expires_at=existing.expires_at,
+                )
+
+        # 3. Persist
         event = HITLEvent.from_request(req)
+        if not event.owner_pubkey:
+            event.owner_pubkey = await self.repository.get_user_pubkey(req.user_id)
         await self.repository.insert(event)
 
-        # 3. Lifecycle: on_created
+        # 4. Publish kind:10020 to the relay → llibreta inbox
+        if self.nostr_bridge and self.nostr_bridge.enabled and event.owner_pubkey:
+            try:
+                nostr_event_id = await self.nostr_bridge.publish_request(event, event.owner_pubkey)
+                if nostr_event_id:
+                    await self.repository.set_reference(
+                        event.event_id, nostr_event_id, self.nostr_bridge.relay_url
+                    )
+                    event.reference_id = nostr_event_id
+            except Exception as exc:  # noqa: BLE001 — request survives publish failure
+                logger.error("Nostr publish failed for %s: %s", event.event_id, exc)
+        elif self.nostr_bridge and self.nostr_bridge.enabled:
+            logger.warning(
+                "HITL %s has no owner pubkey (user_id=%s) — not published to inbox",
+                event.event_id,
+                req.user_id,
+            )
+
+        # 5. Lifecycle: on_created
         await self.lifecycle.on_created(event)
 
-        # 4. Notify
+        # 6. Notify remaining channels
         await self.dispatcher.notify_all(event)
 
         logger.info("HITL request created: id=%s action=%s user=%s", event.event_id, req.action_type, req.user_id)

@@ -11,6 +11,11 @@ logger = logging.getLogger(__name__)
 class ValidatorPlugin(ABC):
     """Base class for HITL validators. Validates action_details before accepting a HITL request."""
 
+    #: Fallback validators only run when no specific validator accepts the
+    #: action_type (auto-discovery order is alphabetical, so without this flag
+    #: DefaultValidator would shadow most specific validators).
+    is_fallback: bool = False
+
     @abstractmethod
     def accepts(self, action_type: str) -> bool:
         """Returns True if this validator handles this action_type."""
@@ -57,9 +62,12 @@ class ValidatorRegistry:
         logger.info("Validator manually registered: %s", type(validator).__name__)
 
     def get_validator(self, action_type: str) -> ValidatorPlugin | None:
-        """Find the first validator that accepts this action_type."""
+        """Find the first specific validator; fallbacks only when none match."""
         for v in self._validators:
-            if v.accepts(action_type):
+            if not v.is_fallback and v.accepts(action_type):
+                return v
+        for v in self._validators:
+            if v.is_fallback and v.accepts(action_type):
                 return v
         return None
 
