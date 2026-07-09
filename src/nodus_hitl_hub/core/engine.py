@@ -165,9 +165,14 @@ class HITLEngine:
         if event.status != HITLStatus.PENDING:
             return HITLResponse(confirmation_id=confirmation_id, status=HITLStatus.ERROR, error=f"Already {event.status}")
 
-        await self.repository.update_status(confirmation_id, HITLStatus.APPROVED, response)
+        # Merge the resolution INTO the payload instead of replacing it — hooks
+        # (e.g. ModelBookHook) need the original request payload (proposal_id…).
+        merged = dict(event.payload or {})
+        if response:
+            merged["resolution"] = response
+        await self.repository.update_status(confirmation_id, HITLStatus.APPROVED, merged)
         event.status = HITLStatus.APPROVED
-        event.payload = response or event.payload
+        event.payload = merged
         await self.lifecycle.on_approved(event)
 
         logger.info("HITL approved: id=%s", confirmation_id)
@@ -182,8 +187,11 @@ class HITLEngine:
         if event.status != HITLStatus.PENDING:
             return HITLResponse(confirmation_id=confirmation_id, status=HITLStatus.ERROR, error=f"Already {event.status}")
 
-        await self.repository.update_status(confirmation_id, HITLStatus.REJECTED, {"reason": reason})
+        merged = dict(event.payload or {})
+        merged["resolution"] = {"reason": reason}
+        await self.repository.update_status(confirmation_id, HITLStatus.REJECTED, merged)
         event.status = HITLStatus.REJECTED
+        event.payload = merged
         await self.lifecycle.on_rejected(event)
 
         logger.info("HITL rejected: id=%s reason=%s", confirmation_id, reason)
