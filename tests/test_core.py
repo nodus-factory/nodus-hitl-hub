@@ -69,7 +69,7 @@ class TestHITLEvent:
             hint="Test action",
         )
         assert event.event_id.startswith("hitl_")
-        assert event.kind == 10003
+        assert event.kind == 10020
         assert event.pubkey == "hitl-hub"
         assert event.status == HITLStatus.PENDING
         assert event.verified is False

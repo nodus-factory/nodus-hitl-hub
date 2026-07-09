@@ -2,13 +2,13 @@
 
 import logging
 
-from nodus_hitl_hub.core.engine import HITLEngine
+from nodus_hitl_hub.bootstrap import get_engine
 from nodus_hitl_hub.models.hitl import HITLRequest
 
 logger = logging.getLogger(__name__)
 
 
-def register_tools(mcp, engine: HITLEngine) -> None:
+def register_tools(mcp) -> None:
     """Register all HITL MCP tools on the FastMCP server."""
 
     @mcp.tool()
@@ -23,18 +23,20 @@ def register_tools(mcp, engine: HITLEngine) -> None:
     ) -> dict:
         """Request user confirmation for a sensitive action.
 
-        Creates a HITL event, persists it to the database, and notifies the user
-        via all configured channels (Nostr relay, SSE, etc.).
+        Creates a HITL event, persists it to the database, publishes a
+        kind:10020 inbox item to the Nostr relay (llibreta inbox) and notifies
+        the remaining configured channels.
 
         Args:
-            action_type: Type of action (send_email, deploy_sensor, start_recording, etc.)
+            action_type: Type of action (send_email, deploy_sensor, modelbook_conflict, etc.)
             action_description: Human-readable description shown to the user
             user_id: User ID who must approve
             action_details: Structured payload with action-specific fields
             tenant_id: Tenant ID for multi-tenant isolation
             timeout_seconds: How long until the request expires (default 300s = 5 min)
-            metadata: Extra metadata (session_id, dw_pubkey, tags, etc.)
+            metadata: Extra metadata (session_id, dw_pubkey, idempotency_key, tags, etc.)
         """
+        engine = await get_engine()
         req = HITLRequest(
             action_type=action_type,
             action_description=action_description,
@@ -64,6 +66,7 @@ def register_tools(mcp, engine: HITLEngine) -> None:
             poll_interval_seconds: Seconds between status checks (default 2)
             max_wait_seconds: Maximum time to wait (default 300s = 5 min)
         """
+        engine = await get_engine()
         result = await engine.wait(
             confirmation_id=confirmation_id,
             poll_interval=float(poll_interval_seconds),
@@ -78,6 +81,7 @@ def register_tools(mcp, engine: HITLEngine) -> None:
         Args:
             confirmation_id: The confirmation ID to check
         """
+        engine = await get_engine()
         result = await engine.check(confirmation_id)
         return result.model_dump(mode="json")
 

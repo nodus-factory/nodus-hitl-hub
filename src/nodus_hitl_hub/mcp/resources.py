@@ -3,12 +3,12 @@
 import json
 import logging
 
-from nodus_hitl_hub.core.engine import HITLEngine
+from nodus_hitl_hub.bootstrap import get_engine
 
 logger = logging.getLogger(__name__)
 
 
-def register_resources(mcp, engine: HITLEngine) -> None:
+def register_resources(mcp) -> None:
     """Register all HITL MCP resources on the FastMCP server."""
 
     @mcp.resource("hitl://inbox/{user_id}")
@@ -22,6 +22,7 @@ def register_resources(mcp, engine: HITLEngine) -> None:
         This is the single endpoint the frontend uses to render the unified inbox.
         Survives page refresh because it reads from the database.
         """
+        engine = await get_engine()
         events = await engine.get_inbox(user_id)
         result = [e.model_dump(mode="json") for e in events]
         logger.debug("Inbox for user %s: %d pending items", user_id, len(result))
