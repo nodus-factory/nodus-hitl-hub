@@ -5,16 +5,21 @@ metadata:
   namespace: nodus-dev
   labels:
     app: hitl-hub
+    component: platform
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: hitl-hub
+      component: platform
   template:
     metadata:
       labels:
         app: hitl-hub
+        component: platform
     spec:
+      imagePullSecrets:
+        - name: ghcr-login-secret
       containers:
         - name: hitl-hub
           image: ghcr.io/nodus-factory/nodus-hitl-hub:latest

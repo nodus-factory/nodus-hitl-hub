@@ -23,6 +23,9 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+nodus_hitl_hub = ["db/migrations/*.sql"]
+
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0.0",
