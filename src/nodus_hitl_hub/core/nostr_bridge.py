@@ -53,9 +53,18 @@ class NostrBridge:
         from nostr_sdk import Client, Keys, NostrSigner
 
         self._keys = Keys.parse(self.nsec)
-        self._client = Client(NostrSigner.keys(self._keys))
-        await self._client.add_relay(self.relay_url)
-        await self._client.connect()
+        client = Client(NostrSigner.keys(self._keys))
+        # nostr-sdk >= 0.39 requires a RelayUrl instance; older takes a str.
+        try:
+            from nostr_sdk import RelayUrl
+
+            await client.add_relay(RelayUrl.parse(self.relay_url))
+        except ImportError:
+            await client.add_relay(self.relay_url)
+        await client.connect()
+        # Only expose the client once fully connected, so a failed start()
+        # leaves the bridge disabled instead of half-initialized.
+        self._client = client
         logger.info(
             "Nostr bridge connected relay=%s pubkey=%s",
             self.relay_url,
