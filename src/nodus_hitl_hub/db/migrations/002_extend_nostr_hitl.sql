@@ -28,3 +28,18 @@ CREATE INDEX IF NOT EXISTS nostr_hitl_reference_idx
 
 CREATE INDEX IF NOT EXISTS nostr_hitl_user_status_idx
   ON nostr_hitl (user_id, status);
+
+-- Indexes moved from migration 001: they depend on hub-only columns that do
+-- not exist until this migration runs against a pre-existing llibreta table.
+CREATE INDEX IF NOT EXISTS idx_nostr_hitl_user_status
+    ON nostr_hitl(user_id, status, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_nostr_hitl_tenant_user
+    ON nostr_hitl(tenant_id, user_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_nostr_hitl_expires
+    ON nostr_hitl(status, expires_at)
+    WHERE status = 'pending' AND expires_at IS NOT NULL;
+
+COMMENT ON COLUMN nostr_hitl.pubkey IS 'Nostr pubkey of the publisher (server or DW)';
+COMMENT ON COLUMN nostr_hitl.sig IS 'Nostr Schnorr signature for non-repudiation and auditability';
