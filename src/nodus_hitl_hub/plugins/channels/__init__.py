@@ -1,0 +1,1 @@
+"""Outbound notification channel adapters."""

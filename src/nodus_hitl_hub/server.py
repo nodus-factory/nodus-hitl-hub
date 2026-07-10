@@ -17,11 +17,10 @@ logger = logging.getLogger("nodus-hitl-hub")
 def create_app():
     """Create and configure the FastMCP application.
 
-    Engine initialization (DB pool, migrations, plugins, Nostr bridge) is
-    lazy and process-wide — see bootstrap.get_engine(). The previous
-    lifespan-based init never ran (the MCP SDK expects an async context
-    manager and got a bare async generator, crashing every session), so all
-    entrypoints now call get_engine() themselves.
+    Engine initialization (DB pool, migrations, plugins, Nostr bridge,
+    ChannelRegistry + NotifyEngine) is lazy and process-wide — see
+    bootstrap.get_engine() and bootstrap.get_notify_engine(). MCP tools
+    receive engine factories via register_tools().
     """
     from mcp.server.fastmcp import FastMCP
 
